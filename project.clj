@@ -1,14 +1,21 @@
-(defproject aom-clojure-rest "0.1.0-SNAPSHOT"
-      :description "Clojure REST service for AoM"
+(defproject tornado-api "0.1.0-SNAPSHOT"
+      :description "Example Clojure REST service for AoM"
       :url "http://artofmonitoring.com"
-      :dependencies [[org.clojure/clojure "1.4.0"]
+      :dependencies [[org.clojure/clojure "1.8.0"]
                      [compojure "1.1.1"]
                      [ring/ring-json "0.1.2"]
+                     [ring/ring-jetty-adapter "1.3.1"]
+                     [ring-logger-timbre "0.7.5"]
+                     [com.taoensso/timbre "4.2.1"]
                      [c3p0/c3p0 "0.9.1.2"]
-                     [org.clojure/java.jdbc "0.2.3"]
-                     [com.h2database/h2 "1.3.168"]
-                     [cheshire "4.0.3"]]
+                     [org.clojure/java.jdbc "0.4.2"]
+                     [mysql/mysql-connector-java "5.1.38"]
+                     [com.taoensso/carmine "2.12.2"]
+                     [cheshire "4.0.3"]
+                     [clj-statsd "0.3.11"]]
       :plugins [[lein-ring "0.7.3"]]
-      :ring {:handler aom-clojure-rest.handler/app}
-      :profiles
-      {:dev {:dependencies [[ring-mock "0.1.3"]]}})
+      :main tornado-api.handler
+      :ring {:handler tornado-api.handler/app}
+      :profiles {
+                 :dev {:dependencies [[ring-mock "0.1.3"]]}
+                 :uberjar {:aot :all}})
