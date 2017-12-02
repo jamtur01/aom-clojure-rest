@@ -1,0 +1,27 @@
+version: '3'
+services:
+  tornado-db:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=items
+      - MYSQL_USER=tornado
+      - MYSQL_PASSWORD=strongpassword
+      - MYSQL_ROOT_PASSWORD
+
+  tornado-redis:
+    image: redis
+    command: >
+     --requirepass tornadoapi
+
+  tornado-api:
+    build: .
+    image: jamtur01/tornado-api
+    ports:
+      - "3005:8080"
+    environment:
+      - REDIS_URL=redis://redis/1
+      - DB_HOSTNAME=db
+    depends_on:
+      - tornado-redis
+      - tornado-db
