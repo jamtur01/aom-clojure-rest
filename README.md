@@ -1,6 +1,8 @@
-# Tornado API - Art of Monitoring RESTful Clojure Applications
+# Tornado API - RESTful Clojure Applications
 
-A sample Clojure application built for the Art of Monitoring.
+A sample Clojure application built for the [Art of
+Monitoring](https://artofmonitoring.com) and
+[Monitoring With Prometheus](https://prometheusbook.com).
 
 ## Prerequisites
 
