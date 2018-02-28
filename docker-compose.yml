@@ -16,7 +16,7 @@ services:
 
   tornado-api:
     build: .
-    image: jamtur01/tornado-api
+    image: jamtur01/tornado-api-prometheus
     ports:
       - "3005:8080"
     environment:

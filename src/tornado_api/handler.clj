@@ -8,7 +8,8 @@
                 [ring.middleware.json :as middleware]
                 [clojure.java.jdbc :as sql]
                 [taoensso.carmine :as car :refer (wcar)]
-                [clj-statsd :as statsd]
+                [iapetos.core :as prometheus]
+                [iapetos.collector.ring :as ring]
                 [compojure.route :as route]
                 [taoensso.timbre :as timbre]
                 [taoensso.timbre.appenders.core :as appenders]
@@ -19,7 +20,14 @@
   {:level :info
    :appenders {:spit (appenders/spit-appender {:fname "/var/log/tornado-api.log"})}})
 
-(def statsd-prefix "tornado.api.")
+
+(defonce registry
+  (-> (prometheus/collector-registry)
+      (ring/initialize)
+      (prometheus/register
+        (prometheus/gauge :tornado/item-bought-total)
+        (prometheus/gauge :tornado/item-sold-total)
+        (prometheus/counter :tornado/update-item))))
 
 (def server1-conn {:pool {} :spec {:host "tornado-redis" :port 6379 :password "tornadoapi" }})
 
@@ -70,7 +78,7 @@
         (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
             (sql/insert! db-config :items item)
-            (statsd/gauge (str statsd-prefix "item.bought.total") (item "price"))))
+            (prometheus/set (registry :tornado/item-bought-total) (item "price"))))
             (wcar* (car/ping)
               (car/set id (item "title")))
         (get-item id)))
@@ -79,7 +87,7 @@
       (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
             (sql/update! db-config :items ["id=?" id] item)
-            (statsd/increment (str statsd-prefix "update.item"))))
+            (prometheus/inc (registry :tornado/update-item))))
         (get-item id))
 
     (defn sell-item [id]
@@ -89,7 +97,7 @@
               item_state (get-in item [:body :type])]
           (when-not (= item_state "sold")
              (sql/update! db-config :items { :type "sold"} ["id=?" id])
-             (statsd/gauge (str statsd-prefix "item.sold.total") price))))
+             (prometheus/set (registry :tornado/item-sold-total) price))))
         (get-item id))
 
 (defroutes app-routes
@@ -105,9 +113,9 @@
 (def app
       (-> (handler/api app-routes)
         (middleware/wrap-json-body)
-        (middleware/wrap-json-response)))
+        (middleware/wrap-json-response)
+        (ring/wrap-metrics registry {:path "/metrics"})))
 
 (defn -main []
     (migrate)
-    (statsd/setup "localhost" 8125)
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port 8080}))

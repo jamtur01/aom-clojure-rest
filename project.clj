@@ -1,4 +1,4 @@
-(defproject tornado-api "0.1.0-SNAPSHOT"
+(defproject tornado-api-prometheus "0.1.0-SNAPSHOT"
       :description "Example Clojure REST service for AoM"
       :url "http://artofmonitoring.com"
       :dependencies [[org.clojure/clojure "1.8.0"]
@@ -12,7 +12,7 @@
                      [mysql/mysql-connector-java "5.1.38"]
                      [com.taoensso/carmine "2.12.2"]
                      [cheshire "4.0.3"]
-                     [clj-statsd "0.3.11"]]
+                     [iapetos "0.1.8"]]
       :plugins [[lein-ring "0.7.3"]]
       :main tornado-api.handler
       :ring {:handler tornado-api.handler/app}
