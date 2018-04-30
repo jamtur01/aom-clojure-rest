@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tornado-db
+spec:
+  ports:
+  - port: 3306
+  selector:
+    app: tornado-db
+  clusterIP: None
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: tornado-db
+spec:
+  selector:
+    matchLabels:
+      app: tornado-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tornado-db
+    spec:
+      containers:
+      - image: mysql:5.6
+        name: tornado-db
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        - name: MYSQL_DATABASE
+          value: items
+        - name: MYSQL_PASSWORD
+          value: strongpassword
+        - name: MYSQL_USER
+          value: tornado
+        ports:
+        - containerPort: 3306
+          name: tornado-db

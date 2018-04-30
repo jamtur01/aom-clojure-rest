@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tornado-redis
+spec:
+  ports:
+  - port: 6379
+  selector:
+    app: tornado-redis
+  clusterIP: None
+---
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: tornado-redis
+spec:
+  selector:
+    matchLabels:
+      app: tornado-redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tornado-redis
+    spec:
+      containers:
+      - args:
+        - --requirepass
+        - tornadoapi
+        image: redis
+        name: tornado-redis
+        ports:
+        - containerPort: 6379
+          name: tornado-redis

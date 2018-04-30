@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tornado-api
+  labels:
+    app: tornado-api
+spec:
+  type: LoadBalancer
+  ports:
+  - name: api
+    port: 3005
+    targetPort: 8080
+  selector:
+    app: tornado-api
+status:
+  loadBalancer: {}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: tornado-api
+  name: tornado-api
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: tornado-api
+    spec:
+      containers:
+      - env:
+        - name: DB_HOSTNAME
+          value: tornado-db
+        - name: REDIS_URL
+          value: redis://tornado-redis/1
+        image: jamtur01/tornado-api-prometheus
+        name: tornado-api
+        ports:
+        - containerPort: 8080
+        resources: {}
+      restartPolicy: Always
+status: {}
