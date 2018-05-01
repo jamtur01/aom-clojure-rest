@@ -2,11 +2,17 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tornado-db
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '9104'
 spec:
-  ports:
-  - port: 3306
   selector:
     app: tornado-db
+  ports:
+  - port: 3306
+    name: tornado-db
+  - port: 9104
+    name: tornado-db-exp
   clusterIP: None
 ---
 apiVersion: apps/v1beta2
@@ -39,3 +45,11 @@ spec:
         ports:
         - containerPort: 3306
           name: tornado-db
+      - image: prom/mysqld-exporter:latest
+        name: tornado-db-exp
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "tornado:strongpassword@(tornado-db:3306)/"
+        ports:
+        - containerPort: 9104
+          name: tornado-db-exp

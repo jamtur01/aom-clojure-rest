@@ -2,11 +2,17 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tornado-redis
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '9121'
 spec:
-  ports:
-  - port: 6379
   selector:
     app: tornado-redis
+  ports:
+  - port: 6379
+    name: redis
+  - port: 9121
+    name: redis-exporter
   clusterIP: None
 ---
 apiVersion: apps/v1beta2
@@ -25,11 +31,19 @@ spec:
         app: tornado-redis
     spec:
       containers:
-      - args:
+      - name: tornado-redis
+        args:
         - --requirepass
         - tornadoapi
         image: redis
-        name: tornado-redis
         ports:
         - containerPort: 6379
-          name: tornado-redis
+      - name: redis-exporter
+        env:
+        - name: REDIS_ADDR
+          value: redis://tornado-redis:6379
+        - name: REDIS_PASSWORD
+          value: tornadoapi
+        image: oliver006/redis_exporter:latest
+        ports:
+        - containerPort: 9121
