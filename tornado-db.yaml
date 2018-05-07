@@ -6,6 +6,7 @@ metadata:
     prometheus.io/scrape: 'true'
     prometheus.io/port: '9104'
 spec:
+  type: ClusterIP
   selector:
     app: tornado-db
   ports:
@@ -13,7 +14,6 @@ spec:
     name: tornado-db
   - port: 9104
     name: tornado-db-exp
-  clusterIP: None
 ---
 apiVersion: apps/v1beta2
 kind: Deployment
@@ -34,8 +34,8 @@ spec:
       - image: mysql:5.6
         name: tornado-db
         env:
-        - name: MYSQL_ALLOW_EMPTY_PASSWORD
-          value: "yes"
+        - name: MYSQL_ROOT_PASSWORD
+          value: "reallystrongpassword"
         - name: MYSQL_DATABASE
           value: items
         - name: MYSQL_PASSWORD
@@ -47,9 +47,15 @@ spec:
           name: tornado-db
       - image: prom/mysqld-exporter:latest
         name: tornado-db-exp
+        args:
+        - --collect.info_schema.innodb_metrics
+        - --collect.info_schema.userstats
+        - --collect.perf_schema.eventsstatements
+        - --collect.perf_schema.indexiowaits
+        - --collect.perf_schema.tableiowaits
         env:
         - name: DATA_SOURCE_NAME
-          value: "tornado:strongpassword@(tornado-db:3306)/"
+          value: "tornado-db-exp:anotherstrongpassword@(tornado-db:3306)/"
         ports:
         - containerPort: 9104
           name: tornado-db-exp
