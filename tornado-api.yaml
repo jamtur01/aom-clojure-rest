@@ -4,6 +4,8 @@ metadata:
   name: tornado-api
   labels:
     app: tornado-api
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: tornado.quicknuke.com.
 spec:
   type: LoadBalancer
   ports:

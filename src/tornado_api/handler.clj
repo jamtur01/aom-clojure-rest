@@ -10,6 +10,7 @@
                 [taoensso.carmine :as car :refer (wcar)]
                 [iapetos.core :as prometheus]
                 [iapetos.collector.ring :as ring]
+                [iapetos.collector.jvm :as jvm]
                 [compojure.route :as route]
                 [taoensso.timbre :as timbre]
                 [taoensso.timbre.appenders.core :as appenders]
@@ -23,10 +24,12 @@
 
 (defonce registry
   (-> (prometheus/collector-registry)
+      (jvm/initialize)
       (ring/initialize)
       (prometheus/register
-        (prometheus/gauge :tornado/item-bought-total)
-        (prometheus/gauge :tornado/item-sold-total)
+        (prometheus/counter :tornado/item-get)
+        (prometheus/counter :tornado/item-bought)
+        (prometheus/counter :tornado/item-sold)
         (prometheus/counter :tornado/update-item))))
 
 (def server1-conn {:pool {} :spec {:host "tornado-redis" :port 6379 :password "tornadoapi" }})
@@ -71,14 +74,15 @@
       (let [item (response (first (sql/query db-config ["select * from items where id = ?" id])))]
         (cond
           (empty? (item :body)) {:status 404}
-          :else item)))
+          :else item)
+          (prometheus/inc (registry :tornado/item-get))))
 
     (defn buy-item [item]
       (let [id (uuid)]
         (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
             (sql/insert! db-config :items item)
-            (prometheus/set (registry :tornado/item-bought-total) (item "price"))))
+            (prometheus/inc (registry :tornado/item-bought) (item "price"))))
             (wcar* (car/ping)
               (car/set id (item "title")))
         (get-item id)))
@@ -97,7 +101,7 @@
               item_state (get-in item [:body :type])]
           (when-not (= item_state "sold")
              (sql/update! db-config :items { :type "sold"} ["id=?" id])
-             (prometheus/set (registry :tornado/item-sold-total) price))))
+             (prometheus/inc (registry :tornado/item-sold) price))))
         (get-item id))
 
 (defroutes app-routes

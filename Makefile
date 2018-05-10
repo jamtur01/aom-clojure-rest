@@ -4,5 +4,5 @@ clean:
 build: clean
 	@lein compile
 	@lein uberjar
-	@docker build -t jamtur01/tornado-api .
+	@docker build -t jamtur01/tornado-api-prometheus .
 
