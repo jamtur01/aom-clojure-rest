@@ -37,7 +37,7 @@ spec:
           value: tornado-db
         - name: REDIS_URL
           value: redis://tornado-redis/1
-        image: jamtur01/tornado-api-prometheus
+        image: jamtur01/tornado-api-prometheus:latest
         name: tornado-api
         ports:
         - containerPort: 8080
