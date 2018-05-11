@@ -82,7 +82,7 @@
         (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
             (sql/insert! db-config :items item)
-            (prometheus/inc (registry :tornado/item-bought) (item "price"))))
+            (prometheus/inc (registry :tornado/item-bought))))
             (wcar* (car/ping)
               (car/set id (item "title")))
         (get-item id)))
@@ -101,7 +101,7 @@
               item_state (get-in item [:body :type])]
           (when-not (= item_state "sold")
              (sql/update! db-config :items { :type "sold"} ["id=?" id])
-             (prometheus/inc (registry :tornado/item-sold) price))))
+             (prometheus/inc (registry :tornado/item-sold)))))
         (get-item id))
 
 (defroutes app-routes
