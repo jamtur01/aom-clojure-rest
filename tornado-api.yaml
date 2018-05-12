@@ -6,6 +6,8 @@ metadata:
     app: tornado-api
   annotations:
     external-dns.alpha.kubernetes.io/hostname: tornado.quicknuke.com.
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '8080'
 spec:
   type: LoadBalancer
   ports:
