@@ -30,7 +30,8 @@
         (prometheus/counter :tornado/item-get)
         (prometheus/counter :tornado/item-bought)
         (prometheus/counter :tornado/item-sold)
-        (prometheus/counter :tornado/update-item))))
+        (prometheus/counter :tornado/update-item)
+        (prometheus/gauge   :tornado/up))))
 
 (def server1-conn {:pool {} :spec {:host "tornado-redis" :port 6379 :password "tornadoapi" }})
 
@@ -118,6 +119,7 @@
       (-> (handler/api app-routes)
         (middleware/wrap-json-body)
         (middleware/wrap-json-response)
+        (prometheus/set (registry :tornado/up) 1))
         (ring/wrap-metrics registry {:path "/metrics"})))
 
 (defn -main []
