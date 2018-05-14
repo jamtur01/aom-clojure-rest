@@ -117,11 +117,11 @@
 
 (def app
       (-> (handler/api app-routes)
-        (middleware/wrap-json-body)
-        (middleware/wrap-json-response)
-        (prometheus/set (registry :tornado/up) 1)
-        (ring/wrap-metrics registry {:path "/metrics"})))
+          (middleware/wrap-json-body)
+          (middleware/wrap-json-response)
+          (ring/wrap-metrics registry {:path "/metrics"})))
 
 (defn -main []
     (migrate)
+    (prometheus/set (registry :tornado/up) 1)
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port 8080}))
