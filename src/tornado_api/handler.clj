@@ -119,7 +119,7 @@
       (-> (handler/api app-routes)
         (middleware/wrap-json-body)
         (middleware/wrap-json-response)
-        (prometheus/set (registry :tornado/up) 1))
+        (prometheus/set (registry :tornado/up) 1)
         (ring/wrap-metrics registry {:path "/metrics"})))
 
 (defn -main []
