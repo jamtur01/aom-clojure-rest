@@ -1,3 +1,31 @@
+apiVersion: "networking.istio.io/v1alpha3"
+kind: "DestinationRule"
+metadata:
+  name: "istio-client-mtls"
+spec:
+  host: "*.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+apiVersion: "authentication.istio.io/v1alpha1"
+kind: "MeshPolicy"
+metadata:
+  name: "default"
+spec:
+  peers:
+  - mtls:
+        mode: PERMISSIVE
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+type: Opaque
+data:
+  rootpasswd: cmVhbGx5c3Ryb25ncGFzc3dvcmQ=
+  mysqlpasswd: c3Ryb25ncGFzc3dvcmQ=
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,7 +34,6 @@ metadata:
     prometheus.io/scrape: 'true'
     prometheus.io/port: '9104'
 spec:
-  type: ClusterIP
   selector:
     app: tornado-db
   ports:
@@ -35,11 +62,17 @@ spec:
         name: tornado-db
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: "reallystrongpassword"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: rootpasswd
         - name: MYSQL_DATABASE
           value: items
         - name: MYSQL_PASSWORD
-          value: strongpassword
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: mysqlpasswd
         - name: MYSQL_USER
           value: tornado
         ports:
@@ -55,7 +88,7 @@ spec:
         - --collect.perf_schema.tableiowaits
         env:
         - name: DATA_SOURCE_NAME
-          value: "tornado-db-exp:anotherstrongpassword@(tornado-db:3306)/"
+          value: "root:reallystrongpassword@(tornado-db:3306)/" 
         ports:
         - containerPort: 9104
           name: tornado-db-exp

@@ -11,7 +11,7 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-  - name: api
+  - name: tornado-api
     port: 80
     targetPort: 8080
   selector:
@@ -43,6 +43,7 @@ spec:
         name: tornado-api
         ports:
         - containerPort: 8080
+          name: tornado-api
         resources: {}
       restartPolicy: Always
 status: {}

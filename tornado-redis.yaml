@@ -10,10 +10,9 @@ spec:
     app: tornado-redis
   ports:
   - port: 6379
-    name: redis
+    name: tornado-redis
   - port: 9121
-    name: redis-exporter
-  clusterIP: None
+    name: tornado-redis-exp
 ---
 apiVersion: apps/v1beta2
 kind: Deployment
@@ -38,7 +37,7 @@ spec:
         image: redis
         ports:
         - containerPort: 6379
-      - name: redis-exporter
+      - name: tornado-redis-exp
         env:
         - name: REDIS_ADDR
           value: redis://tornado-redis:6379
