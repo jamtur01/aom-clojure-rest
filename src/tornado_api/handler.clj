@@ -5,12 +5,10 @@
       (:use cheshire.core)
       (:use ring.util.response)
       (:require [compojure.handler :as handler]
+                [opencensus-clojure.ring.middleware :refer [wrap-tracing]]
                 [ring.middleware.json :as middleware]
                 [clojure.java.jdbc :as sql]
                 [taoensso.carmine :as car :refer (wcar)]
-                [iapetos.core :as prometheus]
-                [iapetos.collector.ring :as ring]
-                [iapetos.collector.jvm :as jvm]
                 [compojure.route :as route]
                 [taoensso.timbre :as timbre]
                 [taoensso.timbre.appenders.core :as appenders]
@@ -22,17 +20,6 @@
    :appenders {:spit (appenders/spit-appender {:fname "/var/log/tornado-api.log"})}})
 
 
-(defonce registry
-  (-> (prometheus/collector-registry)
-      (jvm/initialize)
-      (ring/initialize)
-      (prometheus/register
-        (prometheus/counter :tornado/item-get)
-        (prometheus/counter :tornado/item-bought)
-        (prometheus/counter :tornado/item-sold)
-        (prometheus/counter :tornado/update-item)
-        (prometheus/gauge   :tornado/up))))
-
 (def server1-conn {:pool {} :spec {:host "tornado-redis" :port 6379 :password "tornadoapi" }})
 
 (defmacro wcar* [& body] `(car/wcar server1-conn ~@body))
@@ -41,7 +28,7 @@
       db-port 3306
       db-name "items"]
 
-  (def db-config {:classname "com.mysql.jdbc.Driver"
+  (def db-config {:classname "com.mysql.cj.jdbc.Driver"
                   :subprotocol "mysql"
                   :subname (str "//" db-host ":" db-port "/" db-name)
                   :user "tornado"
@@ -75,15 +62,13 @@
       (let [item (response (first (sql/query db-config ["select * from items where id = ?" id])))]
         (cond
           (empty? (item :body)) {:status 404}
-          :else item)
-          (prometheus/inc (registry :tornado/item-get))))
+          :else item)))
 
     (defn buy-item [item]
       (let [id (uuid)]
         (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
-            (sql/insert! db-config :items item)
-            (prometheus/inc (registry :tornado/item-bought))))
+            (sql/insert! db-config :items item)))
             (wcar* (car/ping)
               (car/set id (item "title")))
         (get-item id)))
@@ -91,8 +76,7 @@
     (defn update-item [id item]
       (sql/db-do-commands db-config
           (let [item (assoc item "id" id)]
-            (sql/update! db-config :items ["id=?" id] item)
-            (prometheus/inc (registry :tornado/update-item))))
+            (sql/update! db-config :items ["id=?" id] item)))
         (get-item id))
 
     (defn sell-item [id]
@@ -101,8 +85,7 @@
               price (get-in item [:body :price])
               item_state (get-in item [:body :type])]
           (when-not (= item_state "sold")
-             (sql/update! db-config :items { :type "sold"} ["id=?" id])
-             (prometheus/inc (registry :tornado/item-sold)))))
+             (sql/update! db-config :items { :type "sold"} ["id=?" id]))))
         (get-item id))
 
 (defroutes app-routes
@@ -119,9 +102,8 @@
       (-> (handler/api app-routes)
           (middleware/wrap-json-body)
           (middleware/wrap-json-response)
-          (ring/wrap-metrics registry {:path "/metrics"})))
+          (wrap-tracing)))
 
 (defn -main []
     (migrate)
-    (prometheus/set (registry :tornado/up) 1)
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port 8080}))
