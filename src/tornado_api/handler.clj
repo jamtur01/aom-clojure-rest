@@ -6,6 +6,9 @@
       (:use ring.util.response)
       (:require [compojure.handler :as handler]
                 [opencensus-clojure.ring.middleware :refer [wrap-tracing]]
+                [opencensus-clojure.reporting.logging]
+                [opencensus-clojure.reporting.jaeger] 
+                [clojure.string :as str]
                 [ring.middleware.json :as middleware]
                 [clojure.java.jdbc :as sql]
                 [taoensso.carmine :as car :refer (wcar)]
@@ -102,8 +105,10 @@
       (-> (handler/api app-routes)
           (middleware/wrap-json-body)
           (middleware/wrap-json-response)
-          (wrap-tracing)))
+          (wrap-tracing (fn [req] (-> req :uri (str/replace #"/" "🦄"))))))
 
 (defn -main []
     (migrate)
+    (opencensus-clojure.reporting.logging/report)
+    (opencensus-clojure.reporting.jaeger/report "http://jaeger:14268/api/traces" "tornado-api")
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port 8080}))

@@ -12,7 +12,9 @@
                      [mysql/mysql-connector-java "8.0.13"]
                      [com.taoensso/carmine "2.19.1"]
                      [cheshire "5.8.1"]
-                     [uswitch/opencensus-clojure "0.2.84"]]
+                     [uswitch/opencensus-clojure "0.2.84"]
+                     [io.opencensus/opencensus-exporter-trace-logging "0.23.0"]
+                     [io.opencensus/opencensus-exporter-trace-jaeger "0.23.0"]]
       :plugins [[lein-ring "0.7.3"]]
       :main tornado-api.handler
       :ring {:handler tornado-api.handler/app}
