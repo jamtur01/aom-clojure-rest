@@ -69,6 +69,8 @@ items:
       app: jaeger
       app.kubernetes.io/name: jaeger
       app.kubernetes.io/component: query
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: jaeger.quicknuke.com.
   spec:
     ports:
       - name: query-http
@@ -79,6 +81,8 @@ items:
       app.kubernetes.io/name: jaeger
       app.kubernetes.io/component: all-in-one
     type: LoadBalancer
+  status:
+    loadBalancer: {}
 - apiVersion: v1
   kind: Service
   metadata:

@@ -14,14 +14,32 @@ services:
     command: >
      --requirepass tornadoapi
 
-  tornado-api:
+  tornado-apix:
     build: .
-    image: jamtur01/tornado-api-jaeger
+    image: jamtur01/tornado-apix-jaeger
     ports:
-      - "3005:8080"
+      - "3005:80"
     environment:
       - REDIS_URL=redis://redis/1
       - DB_HOSTNAME=db
     depends_on:
       - tornado-redis
       - tornado-db
+
+  tornado-apiy:
+    build: .
+    image: jamtur01/tornado-apiy-jaeger
+    ports:
+      - "3006:80"
+    environment:
+      - DB_HOSTNAME=db
+    depends_on:
+      - tornado-db
+
+  jaeger:
+    image: jaegertracing/all-in-one
+    ports:
+      - "3007:16686"
+    depends_on:
+      - tornado-apix
+      - tornado-apiy 

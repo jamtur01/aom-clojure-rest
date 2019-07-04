@@ -1,8 +1,9 @@
-clean:
-	rm -rf target
+SUBDIRS = apix apiy
 
-build: clean
-	@lein compile
-	@lein uberjar
-	@docker build -t jamtur01/tornado-api-jaeger .
+.PHONY: subdirs $(SUBDIRS)
+     
+subdirs: $(SUBDIRS)
+     
+$(SUBDIRS):
+	$(MAKE) -C $@ build
 

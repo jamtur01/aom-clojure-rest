@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tornado-apix
+  labels:
+    app: tornado-apix
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: apix.tornado.quicknuke.com.
+    #external-dns.alpha.kubernetes.io/ttl: 60
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: '80'
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tornado-apix
+    port: 80
+    targetPort: 80
+  selector:
+    app: tornado-apix
+status:
+  loadBalancer: {}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: tornado-apix
+  name: tornado-apix
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: tornado-apix
+    spec:
+      containers:
+      - env:
+        - name: DB_HOSTNAME
+          value: tornado-db
+        - name: REDIS_URL
+          value: redis://tornado-redis/1
+        image: jamtur01/tornado-apix-jaeger:latest
+        imagePullPolicy: Always
+        name: tornado-apix
+        ports:
+        - containerPort: 80
+          name: tornado-apix
+        resources: {}
+      restartPolicy: Always
+status: {}
