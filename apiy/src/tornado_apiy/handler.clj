@@ -5,8 +5,10 @@
       (:use cheshire.core)
       (:use ring.util.response)
       (:require [compojure.handler :as handler]
+                [opencensus-clojure.trace :refer [span add-tag]]
+                [opencensus-clojure.reporting.jaeger]
+                [opencensus-clojure.reporting.logging]
                 [opencensus-clojure.ring.middleware :refer [wrap-tracing]]
-                [opencensus-clojure.reporting.jaeger] 
                 [taoensso.carmine :as car :refer (wcar)]
                 [clojure.string :as str]
                 [ring.middleware.json :as middleware]
@@ -45,18 +47,11 @@
       (empty? (item :body)) {:status 404}
       :else item)))
 
-(defn add-newprice [body]
-  (let [id (str (body "id"))
-       item ((get-item id) :body)
-       newprice (* (item :price) 0.8)]
-       (wcar* (car/ping)
-          (car/set id newprice))
-       (get-item id)))
-
 (defroutes app-routes
       (context "/api" [] (defroutes api-routes
         (GET  "/" [] (get-all-items))
-        (POST "/" {body :body} (add-newprice body))))
+        (context "/:id" [id] (defroutes api-routes
+          (GET    "/" [] (get-item id))))))
       (route/not-found "Not Found"))
 
 (def app
@@ -64,7 +59,9 @@
           (middleware/wrap-json-body)
           (middleware/wrap-json-response)
           (wrap-tracing (fn [req] (-> req :uri (str/replace #"/" "🦄"))))))
-
+           
 (defn -main []
+    (opencensus-clojure.trace/configure-tracer {:probability 1.0})
+    (opencensus-clojure.reporting.logging/report)
     (opencensus-clojure.reporting.jaeger/report "http://jaeger:14268/api/traces" "tornado-api")
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port (Integer/valueOf (or (System/getenv "port") "80"))}))

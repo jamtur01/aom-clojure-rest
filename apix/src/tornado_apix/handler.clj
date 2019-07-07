@@ -5,8 +5,10 @@
       (:use cheshire.core)
       (:use ring.util.response)
       (:require [compojure.handler :as handler]
+                [opencensus-clojure.trace :refer [span add-tag make-downstream-headers]]
                 [opencensus-clojure.ring.middleware :refer [wrap-tracing]]
-                [opencensus-clojure.reporting.jaeger] 
+                [opencensus-clojure.reporting.jaeger]
+                [opencensus-clojure.reporting.logging]
                 [clojure.string :as str]
                 [ring.middleware.json :as middleware]
                 [clj-http.client :as client]
@@ -21,7 +23,6 @@
 (timbre/merge-config!
   {:level :info
    :appenders {:spit (appenders/spit-appender {:fname "/var/log/tornado-apix.log"})}})
-
 
 (def server1-conn {:pool {} :spec {:host "tornado-redis" :port 6379 :password "tornadoapi" }})
 
@@ -58,39 +59,45 @@
     (defn uuid [] (str (java.util.UUID/randomUUID)))
 
     (defn get-all-items []
-      (response
-          (sql/query db-config ["select * from items"])))
+      (span "get-all-items"
+        (response
+          (sql/query db-config ["select * from items"]))))
 
     (defn get-item [id]
-      (let [item (response (first (sql/query db-config ["select * from items where id = ?" id])))]
-        (cond
-          (empty? (item :body)) {:status 404}
-          :else item)))
+      (span "get-item"
+        (let [item (response (first (sql/query db-config ["select * from items where id = ?" id])))]
+          (cond
+            (empty? (item :body)) {:status 404}
+            :else item))))
 
     (defn buy-item [item]
       (let [id (uuid)]
-        (sql/db-do-commands db-config
-          (let [item (assoc item "id" id)]
-            (sql/insert! db-config :items item)))
+         (span "buy-item-db"
+          (let [db-response (sql/db-do-commands db-config
+            (let [item (assoc item "id" id)]
+              (sql/insert! db-config :items item)))]))
+         (span "buy-item-redis"
             (wcar* (car/ping)
-              (car/set id (item "title")))
-            (client/post "http://tornado-apiy/api" {:body (generate-string {:id id})
-                                :headers {"Content-Type" "application/json"}})  
+              (car/set id (item "title"))))
+         (span "reprice-item"
+            (client/get (str "http://tornado-apiy/api/" id) {:accept :json}))
         (get-item id)))
 
     (defn update-item [id item]
-      (sql/db-do-commands db-config
-          (let [item (assoc item "id" id)]
-            (sql/update! db-config :items ["id=?" id] item)))
-        (get-item id))
+       (span "udpdate-item-db"
+          (sql/db-do-commands db-config
+            (let [item (assoc item "id" id)]
+              (sql/update! db-config :items ["id=?" id] item))))
+       (get-item id))
 
     (defn sell-item [id]
-      (sql/db-do-commands db-config
-        (let [item (get-item id)
-              price (get-in item [:body :price])
-              item_state (get-in item [:body :type])]
-          (when-not (= item_state "sold")
-             (sql/update! db-config :items { :type "sold"} ["id=?" id]))))
+        (span "sell-item-db"
+          (sql/db-do-commands db-config
+            (let [item (get-item id)
+                  price (get-in item [:body :price])
+                  item_state (get-in item [:body :type])]
+                (when-not (= item_state "sold")
+                (sql/update! db-config :items { :type "sold"} ["id=?" id])))))
         (get-item id))
 
 (defroutes app-routes
@@ -108,8 +115,10 @@
           (middleware/wrap-json-body)
           (middleware/wrap-json-response)
           (wrap-tracing (fn [req] (-> req :uri (str/replace #"/" "🦄"))))))
-
+          
 (defn -main []
-    (migrate)
-    (opencensus-clojure.reporting.jaeger/report "http://jaeger:14268/api/traces" "tornado-api")
+    (migrate) 
+    (opencensus-clojure.trace/configure-tracer {:probability 1.0})
+    (opencensus-clojure.reporting.logging/report)
+    (opencensus-clojure.reporting.jaeger/report "http://jaeger:14268/api/traces" "tornado-api")   
     (run-jetty (logger.timbre/wrap-with-logger app {:printer :no-color}) {:port (Integer/valueOf (or (System/getenv "port") "80"))}))
